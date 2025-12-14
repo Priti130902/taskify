@@ -19,6 +19,7 @@ type LoginResponse = {
 
 export default function AuthPage() {
   const router = useRouter();
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const [tab, setTab] = useState<"login" | "signup">("login");
 
@@ -45,11 +46,10 @@ export default function AuthPage() {
       setLoading(true);
 
       const res = await axios.post<LoginResponse>(
-        "http://localhost:5000/api/auth/login",
+        `${API_URL}/api/auth/login`,
         { email, password }
       );
 
-      // save token
       if (typeof window !== "undefined") {
         localStorage.setItem("token", res.data.token);
       }
@@ -74,14 +74,11 @@ export default function AuthPage() {
     try {
       setLoading(true);
 
-      await axios.post(
-        "http://localhost:5000/api/auth/signup",
-        {
-          name,
-          email: signupEmail,
-          password: signupPassword,
-        }
-      );
+      await axios.post(`${API_URL}/api/auth/signup`, {
+        name,
+        email: signupEmail,
+        password: signupPassword,
+      });
 
       alert("Account created ✅ Please login");
       setTab("login");
@@ -134,7 +131,7 @@ export default function AuthPage() {
           </button>
         </div>
 
-        {/* ================= LOGIN ================= */}
+        {/* LOGIN */}
         {tab === "login" && (
           <>
             <h2 className="text-2xl font-semibold mb-1">Welcome back</h2>
@@ -170,7 +167,7 @@ export default function AuthPage() {
           </>
         )}
 
-        {/* ================= SIGNUP ================= */}
+        {/* SIGNUP */}
         {tab === "signup" && (
           <>
             <h2 className="text-2xl font-semibold mb-1">
