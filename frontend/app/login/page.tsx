@@ -7,40 +7,77 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = async () => {
-    // fake login for now
-    localStorage.setItem("token", "dummy-token");
-    router.push("/dashboard");
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+
+      localStorage.setItem("token", data.token);
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6">Login</h1>
+      <form
+        onSubmit={handleLogin}
+        className="bg-white p-8 rounded-2xl shadow-md w-full max-w-md"
+      >
+        <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
+
+        {error && (
+          <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
+        )}
 
         <input
-          className="w-full border p-3 rounded mb-4"
+          type="email"
           placeholder="Email"
+          className="w-full border rounded-xl px-4 py-2 mb-4"
           value={email}
           onChange={e => setEmail(e.target.value)}
+          required
         />
 
         <input
-          className="w-full border p-3 rounded mb-4"
           type="password"
           placeholder="Password"
+          className="w-full border rounded-xl px-4 py-2 mb-6"
           value={password}
           onChange={e => setPassword(e.target.value)}
+          required
         />
 
         <button
-          onClick={handleLogin}
-          className="w-full bg-emerald-500 text-white py-3 rounded"
+          type="submit"
+          disabled={loading}
+          className="w-full bg-emerald-500 text-white py-2 rounded-xl hover:bg-emerald-600"
         >
-          Login
+          {loading ? "Logging in..." : "Login"}
         </button>
-      </div>
+      </form>
     </div>
   );
 }

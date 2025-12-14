@@ -1,83 +1,128 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+type User = {
+  name: string;
+  email: string;
+  createdAt: string;
+};
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+export default function ProfilePage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [name, setName] = useState("");
 
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        }
-      );
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-      const data = await res.json();
+  /* ===== FETCH PROFILE ===== */
+  useEffect(() => {
+    if (!token) return;
 
-      if (!res.ok) {
-        throw new Error(data.message || "Login failed");
-      }
+    fetch("http://localhost:5000/api/users/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => {
+        setUser(data);
+        setName(data.name);
+        setLoading(false);
+      });
+  }, []);
 
-      localStorage.setItem("token", data.token);
-      router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  /* ===== UPDATE PROFILE ===== */
+  const updateProfile = async () => {
+    if (!token) return;
+
+    const res = await fetch("http://localhost:5000/api/users/me", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name }),
+    });
+
+    const updated = await res.json();
+    setUser(updated);
+    setEditOpen(false);
   };
 
+  if (loading) return <p>Loading...</p>;
+  if (!user) return <p>Error loading profile</p>;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form
-        onSubmit={handleLogin}
-        className="bg-white p-8 rounded-2xl shadow-md w-full max-w-md"
-      >
-        <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
+    <>
+      {/* HEADER */}
+      <h1 className="text-2xl font-bold mb-6">Profile</h1>
 
-        {error && (
-          <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
-        )}
+      {/* CARD */}
+      <div className="bg-white border rounded-2xl p-6 max-w-xl">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-16 w-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl font-semibold">
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="font-medium capitalize">{user.name}</p>
+            <p className="text-sm text-gray-500">{user.email}</p>
+          </div>
+        </div>
 
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full border rounded-xl px-4 py-2 mb-4"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-        />
-
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full border rounded-xl px-4 py-2 mb-6"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-        />
+        <div className="space-y-3">
+          <p><b>Full Name:</b> {user.name}</p>
+          <p><b>Email:</b> {user.email}</p>
+          <p className="text-sm text-gray-500">
+            Member since: {new Date(user.createdAt).toDateString()}
+          </p>
+        </div>
 
         <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-emerald-500 text-white py-2 rounded-xl hover:bg-emerald-600"
+          onClick={() => setEditOpen(true)}
+          className="mt-6 bg-emerald-500 text-white px-5 py-2 rounded-xl"
         >
-          {loading ? "Logging in..." : "Login"}
+          Edit Profile
         </button>
-      </form>
-    </div>
+      </div>
+
+      {/* ================= MODAL ================= */}
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            onClick={() => setEditOpen(false)}
+            className="absolute inset-0 bg-black/40"
+          />
+
+          <div className="relative bg-white w-full max-w-md rounded-2xl p-6 z-10">
+            <h2 className="text-lg font-semibold mb-4">
+              Edit Profile
+            </h2>
+
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full border rounded-xl px-4 py-2 mb-4"
+              placeholder="Full name"
+            />
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setEditOpen(false)}
+                className="px-4 py-2 border rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateProfile}
+                className="px-4 py-2 bg-emerald-500 text-white rounded-xl"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
